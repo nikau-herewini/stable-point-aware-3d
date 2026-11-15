@@ -10,6 +10,12 @@ import spar3d.models.utils as spar3d_utils
 
 
 def get_device():
+    # The API pins its startup-tested device. Preserve CLI/MPS defaults otherwise.
+    requested = os.environ.get("SPAR3D_DEVICE", "auto").strip().lower()
+    if requested != "auto":
+        if requested not in {"cpu", "cuda"}:
+            raise ValueError("SPAR3D_DEVICE must be auto, cpu, or cuda")
+        return requested
     if os.environ.get("SPAR3D_USE_CPU", "0") == "1":
         return "cpu"
 

@@ -47,8 +47,17 @@ class ClipBasedHeadEstimator(BaseModule):
 
     def configure(self):
         self.model, _ = alpha_clip.load(
-            self.cfg.model, download_root=os.environ.get("ALPHA_CLIP_PATH", None)
-        )  # change to your own ckpt path
+            self.cfg.model,
+            device="cpu",
+            download_root=os.environ.get("ALPHA_CLIP_PATH", None),
+        )
+        # Keep loading on CPU, but restore CLIP's selective GPU weight precision.
+        if get_device() == "cuda":
+            from alpha_clip.model import convert_weights
+
+            convert_weights(self.model)
+        else:
+            self.model.float()
         self.model.eval()
 
         if not hasattr(self.model.visual, "input_resolution"):
@@ -121,12 +130,9 @@ class ClipBasedHeadEstimator(BaseModule):
             mean=OPENAI_DATASET_MEAN,
             std=OPENAI_DATASET_STD,
         )(cond_image)
-        if get_device() != "mps":
-            mask = Normalize(0.5, 0.26)(mask).half()
-            image_features = self.model.visual(cond_image.half(), mask).float()
-        else:
-            mask = Normalize(0.5, 0.26)(mask)
-            image_features = self.model.visual(cond_image, mask)
+        dtype = self.model.visual.conv1.weight.dtype
+        mask = Normalize(0.5, 0.26)(mask).to(dtype=dtype)
+        image_features = self.model.visual(cond_image.to(dtype=dtype), mask).float()
 
         # Run the heads
         outputs = {}

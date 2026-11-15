@@ -146,10 +146,10 @@ class SPAR3D(BaseModule):
         cfg = OmegaConf.load(config_path)
         OmegaConf.resolve(cfg)
         # Add in low_vram_mode to the config
-        if os.environ.get("SPAR3D_LOW_VRAM", "0") == "1" and torch.cuda.is_available():
+        if os.environ.get("SPAR3D_LOW_VRAM", "0") == "1" and get_device() == "cuda":
             cfg.low_vram_mode = True
         else:
-            cfg.low_vram_mode = low_vram_mode if torch.cuda.is_available() else False
+            cfg.low_vram_mode = low_vram_mode if get_device() == "cuda" else False
         model = cls(cfg)
 
         if not model.cfg.low_vram_mode:
@@ -332,6 +332,8 @@ class SPAR3D(BaseModule):
         # Restore weights if we have a checkpoint path
         if hasattr(self, "_state_dict"):
             self.load_state_dict(self._state_dict, strict=False)
+        # Modules created after model.eval() must inherit evaluation mode.
+        self.train(self.training)
 
     def _load_estimator_modules(self):
         """Load the estimator modules"""
@@ -350,6 +352,8 @@ class SPAR3D(BaseModule):
         # Restore weights if we have a checkpoint path
         if hasattr(self, "_state_dict"):
             self.load_state_dict(self._state_dict, strict=False)
+        # Modules created after model.eval() must inherit evaluation mode.
+        self.train(self.training)
 
     def _load_pdiff_modules(self):
         """Load only the point diffusion modules"""
@@ -396,6 +400,8 @@ class SPAR3D(BaseModule):
         # Restore weights if we have a checkpoint path
         if hasattr(self, "_state_dict"):
             self.load_state_dict(self._state_dict, strict=False)
+        # Modules created after model.eval() must inherit evaluation mode.
+        self.train(self.training)
 
     def _unload_pdiff_modules(self):
         """Unload point diffusion modules to free memory"""
