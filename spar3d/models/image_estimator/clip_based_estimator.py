@@ -51,8 +51,12 @@ class ClipBasedHeadEstimator(BaseModule):
             device="cpu",
             download_root=os.environ.get("ALPHA_CLIP_PATH", None),
         )
-        # CPU convolutions and attention must not inherit CLIP's half precision.
-        if get_device() != "cuda":
+        # Keep loading on CPU, but restore CLIP's selective GPU weight precision.
+        if get_device() == "cuda":
+            from alpha_clip.model import convert_weights
+
+            convert_weights(self.model)
+        else:
             self.model.float()
         self.model.eval()
 
@@ -126,7 +130,7 @@ class ClipBasedHeadEstimator(BaseModule):
             mean=OPENAI_DATASET_MEAN,
             std=OPENAI_DATASET_STD,
         )(cond_image)
-        dtype = next(self.model.parameters()).dtype
+        dtype = self.model.visual.conv1.weight.dtype
         mask = Normalize(0.5, 0.26)(mask).to(dtype=dtype)
         image_features = self.model.visual(cond_image.to(dtype=dtype), mask).float()
 

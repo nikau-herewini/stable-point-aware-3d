@@ -18,6 +18,25 @@ This is the official codebase for **SPAR3D**, a state-of-the-art open-source mod
 
 SPAR3D is based on [Stable Fast 3D](https://github.com/Stability-AI/stable-fast-3d) but improves upon the backside of the mesh by conditioning on a point cloud. This point cloud can be generated from an image using our included point cloud denoising model. This point cloud can even be edited easily in external tools or our included gradio demo. With that missing backside details can be fixed. We further improve the prediction quality of materials using novel contributions. We achieve all of this while still maintaining the fast inference speeds.
 
+## Docker-based API
+
+This fork adds an image-only HTTP server for future tool integrations:
+
+- `POST /generate`: one PNG/JPEG in multipart field `image` → textured GLB.
+- `GET /healthz` and `GET /readyz`: HTTP health and model readiness.
+- One generation at a time; 10 MiB / 16 million pixel input limits.
+- CPU, NVIDIA CUDA, and AMD ROCm Docker configurations; optional low-VRAM mode.
+
+```sh
+docker build -t spar3d-api:cpu .
+```
+
+See [the deployment and API guide](docs/api.md) for runtime model access, cache
+volumes, GPU commands, CI publication, and client error handling. The API has
+**no authentication** and must stay on a trusted private network. Weights and
+tokens stay outside the image. Full-model and GPU validation require deployment
+hardware and model access. The existing CLI, demos, and ComfyUI files remain.
+
 ## Getting Started
 
 ### Installation

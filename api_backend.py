@@ -37,15 +37,19 @@ class Generator:
         from spar3d.utils import foreground_crop, remove_background
 
         foreground = remove_background(image, self.bg_remover)
+        if foreground is image:
+            foreground = image.copy()
         try:
+            # A skinny input can otherwise become an enormous padded square.
+            # Bound the longest side before the crop helper allocates that square.
+            foreground.thumbnail((2048, 2048))
             with foreground.getchannel("A") as alpha:
                 bounds = alpha.getbbox()
             if bounds is None or bounds[2] - bounds[0] < 2 or bounds[3] - bounds[1] < 2:
                 raise InvalidImage("No usable foreground was detected.")
             prepared = foreground_crop(foreground, 1.3)
         finally:
-            if foreground is not image:
-                foreground.close()
+            foreground.close()
         try:
             with self.torch.inference_mode():
                 with (

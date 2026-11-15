@@ -32,7 +32,10 @@ def test_fixed_generation_options(generator):
     with Image.new("RGBA", (8, 8), (255, 0, 0, 255)) as image:
         assert engine.generate(image) == b"glTF"
         utils.remove_background.assert_called_once_with(image, engine.bg_remover)
-        utils.foreground_crop.assert_called_once_with(image, 1.3)
+        utils.foreground_crop.assert_called_once()
+        foreground, ratio = utils.foreground_crop.call_args.args
+        assert foreground is not image
+        assert ratio == 1.3
         assert engine.model.run_image.call_args.kwargs == {
             "bake_resolution": 1024,
             "remesh": "none",
@@ -61,3 +64,28 @@ def test_empty_mesh_is_input_error(generator):
         with pytest.raises(InvalidImage, match="mesh"):
             engine.generate(image)
     mesh.export.assert_not_called()
+
+
+def test_long_thin_image_is_rejected_before_square_crop(generator):
+    engine, utils, _ = generator
+    # A compressed, valid 2 x 10000 PNG must not create a 13000-square crop.
+    with Image.new("RGBA", (2, 10_000), (255, 0, 0, 254)) as image:
+        with pytest.raises(InvalidImage, match="foreground"):
+            engine.generate(image)
+        assert image.size == (2, 10_000)
+    utils.foreground_crop.assert_not_called()
+
+
+def test_large_foreground_is_bounded_before_square_crop(generator):
+    engine, utils, _ = generator
+    sizes = []
+
+    def crop(image, ratio):
+        sizes.append(image.size)
+        return image.copy()
+
+    utils.foreground_crop.side_effect = crop
+    with Image.new("RGBA", (4000, 100), (255, 0, 0, 254)) as image:
+        assert engine.generate(image) == b"glTF"
+        assert image.size == (4000, 100)
+    assert max(sizes[0]) == 2048

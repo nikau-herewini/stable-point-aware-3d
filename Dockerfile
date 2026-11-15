@@ -10,6 +10,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
+    NO_ALBUMENTATIONS_UPDATE=1 \
     USE_CUDA=0 \
     USE_METAL=0 \
     USE_NATIVE_ARCH=0 \
@@ -25,7 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
 RUN python -m pip install pip==25.0.1 setuptools==69.5.1 wheel==0.45.1 \
-        packaging==24.2 numpy==1.26.4 Pillow==11.3.0
+        packaging==23.2 numpy==1.26.4 Pillow==11.3.0
 
 # Only the selected stage is built. GPU wheels supply their user-space runtime;
 # the host still needs a supported GPU, driver, and container device access.
@@ -60,7 +61,7 @@ COPY uv_unwrapper/ ./uv_unwrapper/
 # selected torch ABI and NumPy while resolving the legacy runtime dependencies.
 # Install runtime dependencies before compiling either local extension.
 RUN python -m pip freeze > /tmp/backend-constraints.txt \
-    && python -m pip install -c /tmp/backend-constraints.txt \
+    && python -m pip install --no-build-isolation -c /tmp/backend-constraints.txt \
         -r requirements-model.txt -r requirements-api.txt \
     && python -m pip install --no-build-isolation \
         -c /tmp/backend-constraints.txt ./texture_baker/ ./uv_unwrapper/ \
@@ -75,6 +76,7 @@ RUN python - <<'PY'
 import torch
 from spar3d.device import select_device
 from spar3d.system import SPAR3D
+from spar3d.models.image_estimator.clip_based_estimator import ClipBasedHeadEstimator
 from texture_baker import TextureBaker
 assert select_device("cpu") == "cpu"
 uv = torch.tensor([[0., 0.], [1., 0.], [0., 1.]])
@@ -91,12 +93,15 @@ PY
 
 RUN groupadd --gid 10001 spar3d \
     && useradd --uid 10001 --gid 10001 --create-home spar3d \
-    && mkdir -p /cache/huggingface /cache/alpha-clip \
+    && mkdir -p /cache/huggingface /cache/alpha-clip /cache/torch \
+        /cache/.transparent-background \
     && chown -R 10001:10001 /cache /home/spar3d
 ENV HOME=/home/spar3d \
     HF_HOME=/cache/huggingface \
     ALPHA_CLIP_PATH=/cache/alpha-clip \
     XDG_CACHE_HOME=/cache \
+    TORCH_HOME=/cache/torch \
+    TRANSPARENT_BACKGROUND_FILE_PATH=/cache \
     SPAR3D_DEVICE=auto
 USER 10001:10001
 EXPOSE 8000
