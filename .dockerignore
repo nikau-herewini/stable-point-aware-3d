@@ -3,7 +3,7 @@
 **
 !Dockerfile
 !.dockerignore
-!requirements-model.txt
+!requirements.txt
 !requirements-api.txt
 !api_server.py
 !api_backend.py
