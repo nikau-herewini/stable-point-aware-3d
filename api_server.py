@@ -96,7 +96,7 @@ class AdmissionMiddleware:
                 headers={"Retry-After": "5"},
             )(scope, receive, send)
         slot = GenerationSlot(self.lock)
-        scope["sf3d.slot"] = slot
+        scope["spar3d.slot"] = slot
         try:
             headers = dict(scope["headers"])
             try:
@@ -159,7 +159,7 @@ def create_app(engine_factory: Callable | None = None) -> FastAPI:
             factory = Generator
         app.state.engine = await anyio.to_thread.run_sync(factory)
         app.state.executor = ThreadPoolExecutor(
-            max_workers=1, thread_name_prefix="sf3d"
+            max_workers=1, thread_name_prefix="spar3d"
         )
         app.state.ready = True
         try:
@@ -169,7 +169,7 @@ def create_app(engine_factory: Callable | None = None) -> FastAPI:
             await anyio.to_thread.run_sync(app.state.executor.shutdown)
             app.state.engine = None
 
-    app = FastAPI(title="Stable Fast 3D API", lifespan=lifespan)
+    app = FastAPI(title="SPAR3D API", lifespan=lifespan)
     app.state.ready = False
     app.add_middleware(AdmissionMiddleware)
 
@@ -248,7 +248,7 @@ def create_app(engine_factory: Callable | None = None) -> FastAPI:
         try:
             # The concurrent future owns a slot reference. Cancelling the HTTP
             # task cannot release admission while native inference still runs.
-            slot = request.scope["sf3d.slot"]
+            slot = request.scope["spar3d.slot"]
             slot.retain()
             try:
                 future = app.state.executor.submit(run)
