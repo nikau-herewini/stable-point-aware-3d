@@ -2,7 +2,8 @@
 
 This API converts 1 image into 1 textured GLB. It matches the image-only contract
 of the Stable Fast 3D API fork. It does not expose point-cloud editing, generation
-options, batching, or the Gradio UI. The existing CLI and ComfyUI files remain.
+options, batching, or a browser UI. This repository contains only the API and
+its model/native runtime, deployment files, tests, and documentation.
 
 ## Build
 
@@ -29,10 +30,10 @@ import SPAR3D and exercise CPU grid sampling, UV unwrapping, and texture baking.
 They do not download weights or verify full-model inference or GPU execution.
 
 The Dockerfile installs torch first, constrains its ABI and NumPy, installs
-`requirements-model.txt` and `requirements-api.txt`, then builds native extensions
+`requirements.txt` and `requirements-api.txt`, then builds native extensions
 with `--no-build-isolation`. Runtime source dependencies also use the pinned
 setuptools without isolation for AlphaCLIP's legacy `pkg_resources` import.
-It does not use the demo or ComfyUI dependencies.
+Demo, CLI, and ComfyUI entry points and their dependencies are not included.
 Git dependencies have commit pins. Transitive Python packages, apt packages, and
 model revisions are not fully locked. Never pass tokens as build arguments.
 
